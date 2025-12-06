@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="he">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🏖️ ניקוי החוף - משחק מיחזור 🌊</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(180deg, #87CEEB 0%, #F0E68C 100%);
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800"><rect fill="%2387CEEB" width="1200" height="400"/><ellipse cx="600" cy="400" rx="600" ry="100" fill="%2340E0D0" opacity="0.3"/><rect fill="%23F4A460" y="400" width="1200" height="400"/><circle cx="100" cy="100" r="60" fill="%23FFD700" opacity="0.8"/></svg>') no-repeat center center;
+            background-size: cover;
+        }
+
+        #title {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.95);
+            padding: 15px 40px;
+            border-radius: 20px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+            z-index: 100;
+        }
+
+        #title h1 {
+            font-size: 42px;
+            color: #2E8B57;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+            margin: 0;
+        }
+
+        #title p {
+            font-size: 24px;
+            color: #666;
+            margin: 5px 0 0 0;
+        }
+
+        #score-board {
+            position: absolute;
+            top: 130px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.9);
+            padding: 12px 30px;
+            border-radius: 15px;
+            font-size: 28px;
+            font-weight: bold;
+            color: #2E8B57;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            z-index: 100;
+        }
+
+        .trash-item {
+            position: absolute;
+            cursor: grab;
+            transition: transform 0.2s;
+            z-index: 150;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .trash-emoji {
+            font-size: 50px;
+        }
+        
+        .trash-label {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 4px 12px;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+            text-align: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            white-space: nowrap;
+        }
+
+        .trash-item:hover {
+            transform: scale(1.15);
+        }
+
+        .trash-item:active {
+            cursor: grabbing;
+        }
+
+        .trash-item.collected {
+            animation: collect 0.5s ease-out forwards;
+        }
+
+        @keyframes collect {
+            to {
+                transform: scale(0);
+                opacity: 0;
+            }
+        }
+
+        .bin-container {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 40px;
+            z-index: 60;
+        }
+
+        .bin {
+            width: 180px;
+            height: 220px;
+            border-radius: 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            padding: 15px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+            transition: all 0.3s;
+            border: 5px solid transparent;
+        }
+
+        .bin:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 12px 30px rgba(0,0,0,0.4);
+        }
+
+        .bin.highlight {
+            border-color: #FFD700;
+            transform: scale(1.1);
+        }
+
+        .bin.brown { background: linear-gradient(180deg, #8B4513 0%, #654321 100%); }
+        .bin.orange { background: linear-gradient(180deg, #FF8C00 0%, #FF6347 100%); }
+        .bin.blue { background: linear-gradient(180deg, #4169E1 0%, #1E90FF 100%); }
+        .bin.green { background: linear-gradient(180deg, #228B22 0%, #006400 100%); }
+
+        .bin-label {
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+
+        .bin-icon {
+            font-size: 60px;
+            margin: 10px 0;
+        }
+
+        .bin-description {
+            color: white;
+            font-size: 16px;
+            text-align: center;
+            margin-top: 5px;
+        }
+
+        #rake {
+            position: absolute;
+            width: 80px;
+            height: 80px;
+            pointer-events: none;
+            display: none;
+            z-index: 200;
+            filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3));
+        }
+
+        #celebration {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            background: linear-gradient(135deg, #FFD700, #FFA500);
+            padding: 60px;
+            border-radius: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+            text-align: center;
+            z-index: 1000;
+            transition: transform 0.5s;
+        }
+
+        #celebration.show {
+            transform: translate(-50%, -50%) scale(1);
+        }
+
+        #celebration h2 {
+            font-size: 56px;
+            color: white;
+            text-shadow: 3px 3px 6px rgba(0,0,0,0.3);
+            margin-bottom: 20px;
+        }
+
+        #celebration p {
+            font-size: 32px;
+            color: white;
+            margin: 10px 0;
+        }
+
+        #restart-btn {
+            margin-top: 30px;
+            padding: 20px 50px;
+            font-size: 28px;
+            background: #2E8B57;
+            color: white;
+            border: none;
+            border-radius: 15px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+
+        #restart-btn:hover {
+            background: #228B22;
+            transform: scale(1.1);
+        }
+
+        .confetti {
+            position: fixed;
+            width: 10px;
+            height: 10px;
+            background: #FFD700;
+            animation: fall 3s linear;
+            z-index: 999;
+        }
+
+        @keyframes fall {
+            to {
+                transform: translateY(100vh) rotate(360deg);
+                opacity: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <div id="title">
+            <h1>🏖️ ניקוי חוף אשדוד 🌊</h1>
+            <p>גררו את הזבל לפח הנכון!</p>
+        </div>
+
+        <div id="score-board">
+            ניקינו: <span id="score">0</span> / <span id="total">0</span>
+        </div>
+
+        <!-- Trash items will be added here by JavaScript -->
+
+        <div class="bin-container">
+            <div class="bin brown" data-type="organic">
+                <div class="bin-label">🟫 אוֹרְגָּנִי</div>
+                <div class="bin-icon">🍎</div>
+                <div class="bin-description">קְלִפּוֹת וּשְׁאֵרִיּוֹת מָזוֹן</div>
+            </div>
+            <div class="bin orange" data-type="plastic">
+                <div class="bin-label">🟧 פְּלַסְטִיק</div>
+                <div class="bin-icon">♻️</div>
+                <div class="bin-description">בַּקְבּוּקִים וְשַׂקִּיּוֹת</div>
+            </div>
+            <div class="bin blue" data-type="paper">
+                <div class="bin-label">🟦 נְיָר</div>
+                <div class="bin-icon">📄</div>
+                <div class="bin-description">נְיָר וְקַרְטוֹן</div>
+            </div>
+            <div class="bin green" data-type="general">
+                <div class="bin-label">🟩 כְּלָלִי</div>
+                <div class="bin-icon">🗑️</div>
+                <div class="bin-description">שְׁאָר הַזֶּבֶל</div>
+            </div>
+        </div>
+
+        <svg id="rake" viewBox="0 0 100 100">
+            <rect x="45" y="0" width="10" height="70" fill="#8B4513"/>
+            <rect x="20" y="65" width="60" height="8" rx="2" fill="#8B4513"/>
+            <line x1="25" y1="73" x2="25" y2="95" stroke="#8B4513" stroke-width="3"/>
+            <line x1="35" y1="73" x2="35" y2="95" stroke="#8B4513" stroke-width="3"/>
+            <line x1="45" y1="73" x2="45" y2="95" stroke="#8B4513" stroke-width="3"/>
+            <line x1="55" y1="73" x2="55" y2="95" stroke="#8B4513" stroke-width="3"/>
+            <line x1="65" y1="73" x2="65" y2="95" stroke="#8B4513" stroke-width="3"/>
+            <line x1="75" y1="73" x2="75" y2="95" stroke="#8B4513" stroke-width="3"/>
+        </svg>
+    </div>
+
+    <div id="celebration">
+        <h2>🎉 כל הכבוד! 🎉</h2>
+        <p>ניקיתם את החוף!</p>
+        <p>אתם שומרי ים אמיתיים! 🌊💚</p>
+        <button id="restart-btn">שחקו שוב</button>
+    </div>
+
+    <script>
+        const trashItems = [
+            // Plastic - 5 items
+            { emoji: '🍾', type: 'plastic', name: 'בַּקְבּוּק פְּלַסְטִיק' },
+            { emoji: '🥤', type: 'plastic', name: 'כּוֹס שְׁתִיָּה' },
+            { emoji: '🛍️', type: 'plastic', name: 'שַׂקִּית פְּלַסְטִיק' },
+            { emoji: '🍴', type: 'plastic', name: 'כְּלִי חַד פַּעֲמִי' },
+            { emoji: '🥄', type: 'plastic', name: 'כַּפִּית פְּלַסְטִיק' },
+            
+            // Organic - 6 items
+            { emoji: '🍉', type: 'organic', name: 'קְלִפַּת אֲבַטִּיחַ' },
+            { emoji: '🍌', type: 'organic', name: 'קְלִפַּת בָּנָנָה' },
+            { emoji: '🍎', type: 'organic', name: 'תַּפּוּחַ נָגוּס' },
+            { emoji: '🥕', type: 'organic', name: 'שְׁאֵרִיּוֹת יְרָקוֹת' },
+            { emoji: '🍊', type: 'organic', name: 'קְלִפַּת תַּפּוּז' },
+            { emoji: '🌽', type: 'organic', name: 'קְלִפַּת תִּירָס' },
+            
+            // Paper - 7 items
+            { emoji: '📄', type: 'paper', name: 'דַּף נְיָר' },
+            { emoji: '📰', type: 'paper', name: 'עִתּוֹן' },
+            { emoji: '📦', type: 'paper', name: 'קַרְטוֹן' },
+            { emoji: '🧻', type: 'paper', name: 'מַגֶּבֶת נְיָר' },
+            { emoji: '🍕', type: 'paper', name: 'קֻפְסַת פִּיצָה' },
+            { emoji: '🧃', type: 'paper', name: 'קַרְטוֹן מַשְׁקֶה' },
+            { emoji: '🍟', type: 'paper', name: 'שַׂקִּית צ\'יפְּס' },
+            
+            // General - 4 items
+            { emoji: '🥢', type: 'general', name: 'מַקֵּל אַרְטִיק' },
+            { emoji: '🧦', type: 'general', name: 'גֶּרֶב' },
+            { emoji: '👟', type: 'general', name: 'נַעַל' },
+            { emoji: '🥫', type: 'general', name: 'פַּחִית קוֹלָה (מֶתֶכֶת)' },
+        ];
+
+        let score = 0;
+        let total = trashItems.length;
+        let draggedItem = null;
+        let currentBin = null;
+
+        const gameContainer = document.getElementById('game-container');
+        const scoreElement = document.getElementById('score');
+        const totalElement = document.getElementById('total');
+        const rake = document.getElementById('rake');
+        const celebration = document.getElementById('celebration');
+        const restartBtn = document.getElementById('restart-btn');
+
+        totalElement.textContent = total;
+
+        // Sound effects using Web Audio API
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+        function playSuccess() {
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.frequency.setValueAtTime(523.25, audioContext.currentTime); // C5
+            oscillator.frequency.setValueAtTime(659.25, audioContext.currentTime + 0.1); // E5
+            oscillator.frequency.setValueAtTime(783.99, audioContext.currentTime + 0.2); // G5
+            
+            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+            
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.3);
+        }
+
+        function playError() {
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.frequency.setValueAtTime(200, audioContext.currentTime);
+            oscillator.frequency.setValueAtTime(150, audioContext.currentTime + 0.1);
+            
+            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
+            
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.2);
+        }
+
+        function createTrashItems() {
+            const placedPositions = []; // Track placed items to avoid overlaps
+            const minDistance = 120; // Minimum distance between items in pixels
+            
+            trashItems.forEach((item, index) => {
+                const trashDiv = document.createElement('div');
+                trashDiv.className = 'trash-item';
+                trashDiv.dataset.type = item.type;
+                trashDiv.dataset.name = item.name;
+                
+                // Create emoji element
+                const emojiSpan = document.createElement('span');
+                emojiSpan.className = 'trash-emoji';
+                emojiSpan.textContent = item.emoji;
+                
+                // Create label element
+                const labelDiv = document.createElement('div');
+                labelDiv.className = 'trash-label';
+                labelDiv.textContent = item.name;
+                
+                trashDiv.appendChild(emojiSpan);
+                trashDiv.appendChild(labelDiv);
+                
+                // Position items - higher up and avoid overlaps
+                let attempts = 0;
+                let position;
+                let tooClose;
+                
+                do {
+                    tooClose = false;
+                    position = {
+                        left: Math.random() * 75 + 10, // 10% to 85%
+                        top: Math.random() * 35 + 15   // 15% to 50% - higher up!
+                    };
+                    
+                    // Check if too close to existing items
+                    for (let placed of placedPositions) {
+                        const distance = Math.sqrt(
+                            Math.pow(position.left - placed.left, 2) + 
+                            Math.pow(position.top - placed.top, 2)
+                        );
+                        
+                        if (distance < minDistance / 10) { // Convert to percentage-ish
+                            tooClose = true;
+                            break;
+                        }
+                    }
+                    
+                    attempts++;
+                } while (tooClose && attempts < 50);
+                
+                placedPositions.push(position);
+                
+                trashDiv.style.left = `${position.left}%`;
+                trashDiv.style.top = `${position.top}%`;
+                trashDiv.draggable = true;
+                
+                trashDiv.addEventListener('dragstart', handleDragStart);
+                trashDiv.addEventListener('dragend', handleDragEnd);
+                
+                gameContainer.appendChild(trashDiv);
+            });
+        }
+
+        function handleDragStart(e) {
+            draggedItem = e.target;
+            e.dataTransfer.effectAllowed = 'move';
+            rake.style.display = 'block';
+            draggedItem.style.opacity = '0.5';
+        }
+
+        function handleDragEnd(e) {
+            setTimeout(() => {
+                rake.style.display = 'none';
+            }, 100);
+            
+            if (draggedItem) {
+                draggedItem.style.opacity = '1';
+            }
+            
+            document.querySelectorAll('.bin').forEach(bin => {
+                bin.classList.remove('highlight');
+            });
+        }
+
+        // Mouse/touch following for rake - updated to work continuously
+        document.addEventListener('mousemove', (e) => {
+            if (rake.style.display === 'block') {
+                rake.style.left = (e.clientX - 40) + 'px';
+                rake.style.top = (e.clientY - 40) + 'px';
+            }
+        });
+        
+        // Also handle drag event to ensure rake follows
+        document.addEventListener('drag', (e) => {
+            if (e.clientX !== 0 && e.clientY !== 0) { // Avoid 0,0 position bug
+                rake.style.left = (e.clientX - 40) + 'px';
+                rake.style.top = (e.clientY - 40) + 'px';
+            }
+        });
+
+        // Set up bins as drop targets
+        document.querySelectorAll('.bin').forEach(bin => {
+            bin.addEventListener('dragover', handleDragOver);
+            bin.addEventListener('drop', handleDrop);
+            bin.addEventListener('dragenter', handleDragEnter);
+            bin.addEventListener('dragleave', handleDragLeave);
+        });
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            return false;
+        }
+
+        function handleDragEnter(e) {
+            e.preventDefault();
+            this.classList.add('highlight');
+        }
+
+        function handleDragLeave(e) {
+            this.classList.remove('highlight');
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            this.classList.remove('highlight');
+            
+            if (!draggedItem) return;
+            
+            const binType = this.dataset.type;
+            const itemType = draggedItem.dataset.type;
+            
+            if (binType === itemType) {
+                // Correct!
+                playSuccess();
+                draggedItem.classList.add('collected');
+                score++;
+                scoreElement.textContent = score;
+                
+                setTimeout(() => {
+                    draggedItem.remove();
+                    checkWin();
+                }, 500);
+            } else {
+                // Wrong!
+                playError();
+                draggedItem.style.animation = 'shake 0.5s';
+                setTimeout(() => {
+                    draggedItem.style.animation = '';
+                }, 500);
+            }
+            
+            return false;
+        }
+
+        function checkWin() {
+            if (score === total) {
+                setTimeout(() => {
+                    showCelebration();
+                }, 500);
+            }
+        }
+
+        function showCelebration() {
+            celebration.classList.add('show');
+            createConfetti();
+        }
+
+        function createConfetti() {
+            const colors = ['#FFD700', '#FF6347', '#4169E1', '#32CD32', '#FF69B4'];
+            for (let i = 0; i < 100; i++) {
+                setTimeout(() => {
+                    const confetti = document.createElement('div');
+                    confetti.className = 'confetti';
+                    confetti.style.left = Math.random() * 100 + '%';
+                    confetti.style.background = colors[Math.floor(Math.random() * colors.length)];
+                    confetti.style.animationDelay = Math.random() + 's';
+                    document.body.appendChild(confetti);
+                    
+                    setTimeout(() => confetti.remove(), 3000);
+                }, i * 30);
+            }
+        }
+
+        restartBtn.addEventListener('click', () => {
+            location.reload();
+        });
+
+        // Add shake animation
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes shake {
+                0%, 100% { transform: translateX(0); }
+                25% { transform: translateX(-10px); }
+                75% { transform: translateX(10px); }
+            }
+        `;
+        document.head.appendChild(style);
+
+        // Initialize game
+        createTrashItems();
+    </script>
+</body>
+</html>
